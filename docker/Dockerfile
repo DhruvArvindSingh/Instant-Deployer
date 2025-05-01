@@ -18,6 +18,4 @@ RUN npm install
 RUN chmod +x main.sh
 RUN chmod +x script.js
 
-EXPOSE 80
-
 ENTRYPOINT ["/app/main.sh"]
