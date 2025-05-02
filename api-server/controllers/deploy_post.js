@@ -2,6 +2,7 @@ import client from '../database/index.js'
 import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs"
 import { generateSlug } from 'random-word-slugs'
 import dotenv from 'dotenv'
+
 dotenv.config()
 
 const config = {
@@ -19,8 +20,12 @@ const ecsClient = new ECSClient({
 
 
 export default async function deploy_post(req, res) {
-    const { projectId } = req.body;
-    const project = await client.query('SELECT * FROM projects WHERE id = $1', [projectId])
+    const { repoUrl, isStaticSite, exposePorts, customSubdomain } = req.body;
+    console.log("repoUrl = ", repoUrl)
+    console.log("isStaticSite = ", isStaticSite)
+    console.log("exposePorts = ", exposePorts)
+    console.log("customSubdomain = ", customSubdomain)
+    const project = await client.query('SELECT * FROM projects WHERE github_url = $1', [repoUrl])
     if (!project.rows.length) {
         return res.status(404).json({ error: 'Project not found' })
     }

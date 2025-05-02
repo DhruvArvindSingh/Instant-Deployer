@@ -4,17 +4,27 @@ dotenv.config();
 
 const { JWT_SECRET } = process.env;
 export default function verify(req, res, next) {
-    const token = req.cookies.token;
+    console.log("verify controller");
+    console.log("req.cookies = ", req.cookies);
+    console.log("req.headers = ", req.headers);
+
+    // Check for token in cookies or headers
+    const cookieToken = req.cookies.token;
+    const headerToken = req.headers.token;
+    const token = cookieToken || headerToken;
+
     console.log("token = ", token);
-    if (token) {
-        jwt.verify(token, JWT_SECRET, (err, decoded) => {
-            if (err) {
-                res.status(401).json({ message: "Unauthorized" });
-            } else {
-                res.status(200).json({ message: "Authorized" });
-            }
-        });
-    } else {
-        res.status(401).json({ message: "Unauthorized, no token provided" });
+
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized, no token provided" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        console.log("Token verified successfully:", decoded);
+        res.status(200).json({ message: "Authorized", user: decoded });
+    } catch (err) {
+        console.error("Token verification failed:", err);
+        res.status(401).json({ message: "Unauthorized, invalid token" });
     }
 }

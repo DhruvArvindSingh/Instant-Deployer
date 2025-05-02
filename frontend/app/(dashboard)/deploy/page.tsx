@@ -1,18 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Zap, Globe, Database } from 'lucide-react';
+import { Zap, Globe, Database, Rocket } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import { Toggle } from '@/components/ui/toggle';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 export default function DeployPage() {
   const [repoUrl, setRepoUrl] = useState('');
   const [isDeploying, setIsDeploying] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+  const [isStaticSite, setIsStaticSite] = useState(true);
+  const [exposePorts, setExposePorts] = useState('');
+  const [customSubdomain, setCustomSubdomain] = useState('');
+  let token = '';
+  useEffect(() => {
+    return () => {
+      checkAuth();
+    }
+  }, []);
 
-  const handleDeploy = () => {
+  const checkAuth = async () => {
+    console.log("Checking authentication");
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+    token = cookies.token;
+
+    try {
+      const res = await axios.post('http://localhost:9000/verify', {}, {
+        headers: {
+          'token': token,
+        }
+      });
+
+      if (res.status === 401) {
+        router.push('/login');
+      }
+
+    } catch (error) {
+      console.error("Authentication error:", error);
+      router.push('/login');
+    }
+  }
+
+
+  const handleDeploy = async () => {
     if (!repoUrl) {
       toast({
         variant: 'destructive',
@@ -21,17 +63,50 @@ export default function DeployPage() {
       });
       return;
     }
-
+    if (!repoUrl.startsWith("https://github.com/")) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please enter a valid GitHub repository URL',
+      });
+      return;
+    }
+    if (isStaticSite == false && !exposePorts) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please enter a valid port',
+      });
+      return;
+    }
+    if (!/^\d+(,\d+)*$/.test(exposePorts)) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please enter valid port numbers separated by commas',
+      });
+      return;
+    }
+    const ports = exposePorts.split(',').map(port => parseInt(port.trim()));
     setIsDeploying(true);
-    
     // Simulate deployment
-    setTimeout(() => {
-      setIsDeploying(false);
+    const res = await axios.post('http://localhost:9000/deploy', {
+      repoUrl: repoUrl,
+      isStaticSite: isStaticSite,
+      exposePorts: ports,
+      customSubdomain: customSubdomain,
+    }, {
+      headers: {
+        'token': token,
+      }
+    });
+    if (res.status === 200) {
       toast({
         title: 'Deployment started',
         description: 'Your project is now being deployed',
       });
-    }, 2000);
+      console.log("Deployment started", res.data);
+    }
   };
 
   return (
@@ -42,7 +117,7 @@ export default function DeployPage() {
 
       <Card className="mb-8 border-border/50 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Deploy from Git</CardTitle>
+          <CardTitle>Deploy from Github</CardTitle>
           <CardDescription>
             Enter your GitHub repository URL to deploy your project instantly with
             zero configuration
@@ -70,40 +145,88 @@ export default function DeployPage() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm ">
           <CardHeader>
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
-              <Zap className="h-5 w-5 text-primary" />
+            <div className="w-50 h-30 bg-chart-1/10 rounded-lg flex items-center justify-center mb-3">
+              <RadioGroup defaultValue="instant" className="flex flex-col gap-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="instant" id="instant" onClick={() => setIsStaticSite(true)} />
+                  <Label htmlFor="instant">Static Site</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="scheduled" id="scheduled" onClick={() => setIsStaticSite(false)} />
+                  <Label htmlFor="scheduled">Dynamic Site</Label>
+                </div>
+              </RadioGroup>
             </div>
-            <CardTitle className="text-lg">Instant Deployment</CardTitle>
+            <CardTitle className="text-lg">Nodejs backend</CardTitle>
             <CardDescription>
-              Deploy directly from Git with zero configuration and no vendor lock-in.
+              If your website have a backend, you can deploy it here using Dynamic Site option.
+              Dynamic site will automatically deploy your backend code for 3 hours.
             </CardDescription>
           </CardHeader>
         </Card>
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
-            <div className="w-10 h-10 bg-chart-2/10 rounded-lg flex items-center justify-center mb-3">
-              <Globe className="h-5 w-5 text-chart-2" />
+            <div className="w-50 h-10 bg-chart-2/10 rounded-lg flex items-center justify-center mb-3">
+              <Input type="string" placeholder="Expose Ports" value={exposePorts} onChange={(e) => {
+                if (isStaticSite == false) {
+                  console.log("Expose ports", e.target.value);
+                  setExposePorts(e.target.value);
+                } else {
+                  console.log("Static site, not exposing ports");
+                  setExposePorts('');
+                }
+              }} />
             </div>
-            <CardTitle className="text-lg">Global CDN</CardTitle>
+            <CardTitle className="text-lg">Expose Ports</CardTitle>
             <CardDescription>
-              Your projects are automatically distributed to our global edge network.
+              If you want to expose ports, you can do it here. Example: 3000, 3001, 3002
             </CardDescription>
           </CardHeader>
         </Card>
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
-            <div className="w-10 h-10 bg-chart-3/10 rounded-lg flex items-center justify-center mb-3">
-              <Database className="h-5 w-5 text-chart-3" />
+            <div className="w-50 h-10 bg-chart-3/10 rounded-lg flex items-center justify-center mb-3">
+              <Input type="string" placeholder="Custom Subdomain" value={customSubdomain} onChange={(e) => setCustomSubdomain(e.target.value)} />
             </div>
-            <CardTitle className="text-lg">Serverless Functions</CardTitle>
+            <CardTitle className="text-lg">Custom Subdomain</CardTitle>
             <CardDescription>
-              Deploy backend code without managing servers or infrastructure.
+              If you want to use a custom subdomain, you can add it here.
             </CardDescription>
           </CardHeader>
         </Card>
-      </div>
+      </div >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="w-50 h-100 bg-chart-2/10 rounded-lg flex items-center justify-center mb-3">
+              <Input type="string" placeholder="Expose Ports" value={exposePorts} onChange={(e) => {
+                if (isStaticSite == false) {
+                  console.log("Expose ports", e.target.value);
+                  setExposePorts(e.target.value);
+                } else {
+                  console.log("Static site, not exposing ports");
+                  setExposePorts('');
+                }
+              }} />
+            </div>
+            {/* <CardTitle className="text-lg">Expose Ports</CardTitle> */}
+
+          </CardHeader>
+        </Card>
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="w-50 h-100 bg-chart-3/10 rounded-lg flex items-center justify-center mb-3">
+              <Input type="string" placeholder="Custom Subdomain" value={customSubdomain} onChange={(e) => setCustomSubdomain(e.target.value)} />
+            </div>
+            {/* <CardTitle className="text-lg">Custom Subdomain</CardTitle>
+            <CardDescription>
+              If you want to use a custom subdomain, you can add it here.
+            </CardDescription> */}
+          </CardHeader>
+        </Card>
+      </div >
     </>
   );
 }

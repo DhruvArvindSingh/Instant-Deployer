@@ -48,9 +48,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:9000/login', {
+      const res = await axios.post('http://localhost:9000/signin', {
         email: email,
         password: password
+      }, {
+        withCredentials: true // Add this to enable sending cookies
       });
 
       if (res.status === 200) {
@@ -61,7 +63,7 @@ export default function LoginPage() {
 
         // Set token in cookie if provided in response
         if (res.data.token) {
-          document.cookie = `token=${res.data.token}`;
+          document.cookie = `token=${res.data.token}; path=/; max-age=86400;`; // 24 hours
           console.log("Cookie set:", document.cookie);
         }
 
