@@ -1,10 +1,17 @@
-const express = require('express')
-const { generateSlug } = require('random-word-slugs')
-const { ECSClient, RunTaskCommand } = require("@aws-sdk/client-ecs")
+import express from 'express'
+import { generateSlug } from 'random-word-slugs'
+import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs"
+import cors from 'cors'
+import cookieParser from 'cookie-parser'
+import { signup_post, signin_post, verify } from './controllers/index.js'
+import hash_pass from './middleware/hash_pass.js'
+
 
 const app = express()
 
 app.use(express.json())
+app.use(cors())
+app.use(cookieParser())
 
 
 const PORT = 9000
@@ -22,6 +29,11 @@ const ecsClient = new ECSClient({
     },
 });
 
+
+
+app.post("/signup", hash_pass, signup_post);
+app.post("/signin", signin_post);
+app.post("verify", verify)
 app.post("/project", async (req, res) => {
     const { projectURL } = req.body;
     const projectSlug = generateSlug();
