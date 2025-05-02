@@ -29,7 +29,7 @@ export default async function uploadToS3(s3Client, outDir) {
     }
 
 
-    for (const file of files) {
+    for (const [index, file] of files.entries()) {
         const filePath = path.join(baseDir, file);
 
         if (fs.lstatSync(filePath).isDirectory()) {
@@ -52,10 +52,17 @@ export default async function uploadToS3(s3Client, outDir) {
             await safeS3Call(() => s3Client.send(command))
             publishLog(`✅ uploaded file = ${file}`)
             console.log("command sent")
+            if (index === files.length - 1) {
+                console.log("Uploaded all files to S3")
+                publishLog("Uploaded all files to S3")
+                process.exit(0);
+            }
         } catch (error) {
             console.error(`❌ ❌ Error uploading file ${file} ❌ ❌:`, error);
             publishLog(`❌Error uploading file ${file}: ${error}`)
         }
+
     }
+
     publishLog("✅ ✅ Uploading completed ✅ ✅")
 }

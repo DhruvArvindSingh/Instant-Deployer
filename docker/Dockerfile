@@ -1,12 +1,17 @@
 FROM ubuntu:22.04
 
-RUN apt-get update
-RUN apt-get install -y curl
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-RUN \. "$HOME/.nvm/nvm.sh"
-RUN nvm install 20
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    gnupg \
+    ca-certificates \
+    lsb-release
 
-RUN apt-get install -y git
+# Install Node.js 20.x directly
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && node --version \
+    && npm --version
 
 WORKDIR /app
 

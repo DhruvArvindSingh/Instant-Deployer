@@ -11,7 +11,8 @@ export default function verify(req, res, next) {
             if (err) {
                 res.status(401).json({ message: "Unauthorized" });
             } else {
-                res.status(200).json({ message: "Authorized" });
+                req.email = decoded.email;
+                next();
             }
         });
     } else {

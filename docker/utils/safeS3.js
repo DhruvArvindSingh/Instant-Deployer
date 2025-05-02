@@ -1,5 +1,7 @@
 
 export default async function safeS3Call(s3Command, maxRetries = 3) {
+    console.log("safeS3Call")
+    console.log("s3Command = ", s3Command)
     let lastError;
     for (let i = 0; i < maxRetries; i++) {
         try {
