@@ -4,14 +4,35 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Zap, Globe, Database, Rocket } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { Toggle } from '@/components/ui/toggle';
+import { CodeBlock } from "@/components/ui/code-block";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { cn } from "@/lib/utils"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
+import { ChangeEvent } from 'react';
 
+import { Textarea } from '@/components/ui/textarea';
 export default function DeployPage() {
   const [repoUrl, setRepoUrl] = useState('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -20,6 +41,10 @@ export default function DeployPage() {
   const [isStaticSite, setIsStaticSite] = useState(true);
   const [exposePorts, setExposePorts] = useState('');
   const [customSubdomain, setCustomSubdomain] = useState('');
+  const [buildScript, setBuildScript] = useState('npm install\nnpm run build');
+  const [runScript, setRunScript] = useState('npm run start');
+  const [open, setOpen] = useState(false)
+  const isDesktop = useMediaQuery("(min-width: 768px)")
   let token = '';
   useEffect(() => {
     return () => {
@@ -55,6 +80,13 @@ export default function DeployPage() {
 
 
   const handleDeploy = async () => {
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+    token = cookies.token;
+    console.log("handleDeploy called", repoUrl, isStaticSite, exposePorts, customSubdomain, buildScript, runScript)
     if (!repoUrl) {
       toast({
         variant: 'destructive',
@@ -71,7 +103,7 @@ export default function DeployPage() {
       });
       return;
     }
-    if (isStaticSite == false && !exposePorts) {
+    if (isStaticSite == false && exposePorts == '') {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -79,7 +111,7 @@ export default function DeployPage() {
       });
       return;
     }
-    if (!/^\d+(,\d+)*$/.test(exposePorts)) {
+    if (!/^\d+(,\d+)*$/.test(exposePorts) && exposePorts != '') {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -87,6 +119,9 @@ export default function DeployPage() {
       });
       return;
     }
+    const buildCommands = buildScript.split('\n').map(line => line.trim());
+    const runCommands = runScript.split('\n').map(line => line.trim());
+
     const ports = exposePorts.split(',').map(port => parseInt(port.trim()));
     setIsDeploying(true);
     // Simulate deployment
@@ -95,6 +130,8 @@ export default function DeployPage() {
       isStaticSite: isStaticSite,
       exposePorts: ports,
       customSubdomain: customSubdomain,
+      buildCommands: buildCommands,
+      runCommands: runCommands,
     }, {
       headers: {
         'token': token,
@@ -106,6 +143,14 @@ export default function DeployPage() {
         description: 'Your project is now being deployed',
       });
       console.log("Deployment started", res.data);
+    }
+    else {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to deploy project',
+      });
+      setIsDeploying(false);
     }
   };
 
@@ -200,33 +245,37 @@ export default function DeployPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
-            <div className="w-50 h-100 bg-chart-2/10 rounded-lg flex items-center justify-center mb-3">
-              <Input type="string" placeholder="Expose Ports" value={exposePorts} onChange={(e) => {
-                if (isStaticSite == false) {
-                  console.log("Expose ports", e.target.value);
-                  setExposePorts(e.target.value);
-                } else {
-                  console.log("Static site, not exposing ports");
-                  setExposePorts('');
-                }
-              }} />
+
+            <CardTitle className="text-lg">Build Script</CardTitle>
+            <div className="max-w-3xl mx-auto w-full">
+              <Textarea
+                value={buildScript}
+                onChange={(e) => setBuildScript(e.target.value)}
+              />
             </div>
-            {/* <CardTitle className="text-lg">Expose Ports</CardTitle> */}
+            <CardDescription>
+              This script will be executed to build your project.The project already have node and npm installed in root directory.
+            </CardDescription>
 
           </CardHeader>
         </Card>
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader>
-            <div className="w-50 h-100 bg-chart-3/10 rounded-lg flex items-center justify-center mb-3">
-              <Input type="string" placeholder="Custom Subdomain" value={customSubdomain} onChange={(e) => setCustomSubdomain(e.target.value)} />
+            <div className="max-w-3xl mx-auto w-full">
+              <CardTitle className="text-lg">Run Script</CardTitle>
+              <Textarea
+                value={runScript}
+                onChange={(e) => setRunScript(e.target.value)}
+              />
             </div>
-            {/* <CardTitle className="text-lg">Custom Subdomain</CardTitle>
             <CardDescription>
-              If you want to use a custom subdomain, you can add it here.
-            </CardDescription> */}
+              This script will be executed to run your project.The project already have node and npm installed in root directory.
+            </CardDescription>
           </CardHeader>
+
         </Card>
       </div >
     </>
   );
-}
+
+} 
