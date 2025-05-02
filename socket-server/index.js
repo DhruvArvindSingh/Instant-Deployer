@@ -3,7 +3,12 @@ import Redis from 'ioredis'
 
 const subscriber = new Redis('rediss://default:AVNS_XpU40UIE-G0XiRF5Qu1@my-vercel-redis-my-vercel-redis.l.aivencloud.com:14820')
 
-const io = new Server({ cors: '*' })
+const io = new Server({
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST']
+    }
+})
 
 subscriber.subscribe('logs:*', (err) => {
     if (err) {
@@ -28,6 +33,9 @@ async function initRedisSubscribe() {
     console.log('Initializing Redis subscribe')
     subscriber.psubscribe('logs:*');
     subscriber.on('pmessage', (pattern, channel, message) => {
+        console.log("pattern", pattern);
+        console.log("channel", channel);
+        console.log("message", message);
         io.to(channel).emit('message', message)
     })
 }

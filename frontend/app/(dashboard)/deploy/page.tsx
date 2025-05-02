@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,25 +12,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
-import { ChangeEvent } from 'react';
+
+import { io } from "socket.io-client";
+const socket = io("http://localhost:9001");
+
 
 import { Textarea } from '@/components/ui/textarea';
 export default function DeployPage() {
@@ -44,6 +29,8 @@ export default function DeployPage() {
   const [buildScript, setBuildScript] = useState('npm install\nnpm run build');
   const [runScript, setRunScript] = useState('npm run start');
   const [open, setOpen] = useState(false)
+  const [logStatus, setLogStatus] = useState(false);
+  const [alllogs, setAllLogs] = useState('');
   const isDesktop = useMediaQuery("(min-width: 768px)")
   let token = '';
   useEffect(() => {
@@ -77,6 +64,21 @@ export default function DeployPage() {
       router.push('/login');
     }
   }
+
+  const handleSocketIncommingMessage = useCallback((message: string) => {
+    console.log(`[Incomming Socket Message]:`, typeof message, message);
+    const { log } = JSON.parse(message);
+    console.log("message", message);
+    setAllLogs((prev) => `${prev}\n${log}`);
+  }, []);
+
+  useEffect(() => {
+    socket.on("message", handleSocketIncommingMessage);
+
+    return () => {
+      socket.off("message", handleSocketIncommingMessage);
+    };
+  }, [handleSocketIncommingMessage]);
 
 
   const handleDeploy = async () => {
@@ -138,11 +140,16 @@ export default function DeployPage() {
       }
     });
     if (res.status === 200) {
+      console.log("Deployment started", res.data);
+      console.log("Subscribing to", res.data.data.projectSlug);
+      socket.emit('subscribe', `logs:${res.data.data.projectSlug}`);
       toast({
         title: 'Deployment started',
         description: 'Your project is now being deployed',
       });
-      console.log("Deployment started", res.data);
+      setLogStatus(true);
+      // setAllLogs((prev) => `${prev}\n${res.data.projectSlug}`);
+
     }
     else {
       toast({
@@ -275,6 +282,17 @@ export default function DeployPage() {
 
         </Card>
       </div >
+      {
+        logStatus && (
+          <div className="grid grid-cols-1 md:grid-cols- gap-6">
+            <CodeBlock
+              language="bash"
+              filename="logs"
+              code={alllogs}
+            />
+          </div >
+        )
+      }
     </>
   );
 
