@@ -27,6 +27,7 @@ export default async function deploy_post(req, res) {
     console.log("isStaticSite = ", isStaticSite)
     console.log("exposePorts = ", exposePorts)
     console.log("customSubdomain = ", customSubdomain)
+
     // console.log("buildCommands = ", buildCommands)
     // console.log("runCommands = ", runCommands)
 
@@ -122,12 +123,20 @@ export default async function deploy_post(req, res) {
         }
     }
     else {
+        const allExposePorts = ['/app/main.sh', '--'];
+        if (exposePorts) {
+            allExposePorts.push('--')
+            exposePorts?.forEach(port => {
+                allExposePorts.push('--expose', `${port}`)
+            })
+            console.log("allExposePorts = ", allExposePorts)
+        }
         console.log("Running container for dynamic site")
         //Run container
         const command = new RunTaskCommand({
             cluster: config.CLUSTER,
             taskDefinition: config.TASK2,
-            launchType: 'FARGATE',
+            launchType: 'EC2',
             count: 1,
             portMappings: [
                 {
@@ -172,7 +181,8 @@ export default async function deploy_post(req, res) {
                                 name: 'BUILD_COMMANDS',
                                 value: buildCommands
                             }
-                        ]
+                        ],
+                        command: allExposePorts
                     }
                 ]
             }

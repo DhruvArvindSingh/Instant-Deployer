@@ -15,6 +15,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 WORKDIR /app
 
+
 COPY main.sh main.sh
 COPY script.js script.js
 COPY utils utils
@@ -24,5 +25,7 @@ COPY package*.json .
 RUN npm install
 RUN chmod +x main.sh
 RUN chmod +x script.js
+EXPOSE 80-9500
+
 
 ENTRYPOINT ["/app/main.sh"]

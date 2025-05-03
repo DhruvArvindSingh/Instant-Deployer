@@ -1,35 +1,24 @@
 import { exec } from 'child_process'
 import path, { dirname } from 'path'
 import { fileURLToPath } from 'url';
-import { S3Client } from '@aws-sdk/client-s3';
 import fs from 'fs'
-
 import publishLog from './redis/index.js'
-
-import hasScript from './utils/hasBuildScript.js'
-import uploadToS3 from './utils/uploadToS3.js'
-
-
-
-const PROJECT_ID = process.env.PROJECT_ID
-
-
-const s3Client = new S3Client({
-    region: 'ap-south-1',
-    credentials: {
-        accessKeyId: 'AKIARZDBIDNGAEUT6DMG',
-        secretAccessKey: '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',
-    },
-});
+import executeRunScript from './utils/executeRunScript.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const BUILD_SCRIPT = (process.env.BUILD_SCRIPT || "npm install && npm run build");
 
 
 
 function main() {
     publishLog("Starting build")
     publishLog("Build starting ...")
+    const exposePorts = process.env.EXPOSE_PORTS;
+    if (exposePorts) {
+        publishLog(`Exposing ports: ${exposePorts}`)
+    }
 
     const repoUrl = process.env.GIT_REPOSITORY_URL;
 
@@ -38,7 +27,7 @@ function main() {
 
     if (fs.existsSync(path.join(outDir, 'package.json'))) {
 
-        (hasScript(outDir, "build")) ? p = exec(`cd ${outDir} && npm i && npm run build`) : p = exec(`cd ${outDir} && npm i`)
+        p = exec(`cd ${outDir} && ${BUILD_SCRIPT}`)
 
         p.stdout.on('data', (data) => {
             console.log(data)
@@ -52,13 +41,14 @@ function main() {
         p.on('close', async (code) => {
             console.log("close", code)
             publishLog(`Build completed with code ${code}`)
-            uploadToS3(s3Client, outDir)
-            console.log("Uploaded all files to S3")
+            executeRunScript(outDir)
+            publishLog("Run Script completed")
         })
     } else {
+
         publishLog("No build script found")
-        uploadToS3(s3Client, outDir)
-        console.log("Uploaded all files to S3")
+        executeRunScript(outDir)
+        publishLog("Run Script completed")
     }
 }
 main()
