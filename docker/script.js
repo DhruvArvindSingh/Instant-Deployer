@@ -53,12 +53,12 @@ function main() {
             console.log("close", code)
             publishLog(`Build completed with code ${code}`)
             uploadToS3(s3Client, outDir)
-            console.log("Uploaded all files to S3")
+            publishLog(`Uploaded all files to S3`)
         })
     } else {
         publishLog("No build script found")
         uploadToS3(s3Client, outDir)
-        console.log("Uploaded all files to S3")
+        publishLog("Uploaded all files to S3")
     }
 }
 main()
