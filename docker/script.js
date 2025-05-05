@@ -54,11 +54,13 @@ function main() {
             publishLog(`Build completed with code ${code}`)
             uploadToS3(s3Client, outDir)
             publishLog(`Uploaded all files to S3`)
+            process.exit(0);
         })
     } else {
         publishLog("No build script found")
         uploadToS3(s3Client, outDir)
         publishLog("Uploaded all files to S3")
+        process.exit(0);
     }
 }
 main()

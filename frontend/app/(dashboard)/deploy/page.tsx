@@ -20,7 +20,10 @@ const socket = io("http://localhost:9001");
 import { Textarea } from '@/components/ui/textarea';
 export default function DeployPage() {
   const [repoUrl, setRepoUrl] = useState('');
-  const [isDeploying, setIsDeploying] = useState(false);
+  const [isDeploying, setIsDeploying] = useState('Deloy');
+  const [isDeployed, setIsDeployed] = useState(false);
+  const [projectSlug, setProjectSlug] = useState('');
+  const [projectURL, setProjectURL] = useState('');
   const { toast } = useToast();
   const router = useRouter();
   const [isStaticSite, setIsStaticSite] = useState(true);
@@ -125,7 +128,7 @@ export default function DeployPage() {
     const runCommands = runScript.split('\n').map(line => line.trim());
 
     const ports = exposePorts.split(',').map(port => parseInt(port.trim()));
-    setIsDeploying(true);
+    setIsDeploying('Deploying...');
     // Simulate deployment
     const res = await axios.post('http://localhost:9000/deploy', {
       repoUrl: repoUrl,
@@ -140,6 +143,13 @@ export default function DeployPage() {
       }
     });
     if (res.status === 200) {
+      setIsDeploying('Deployed');
+      setTimeout(() => {
+        setIsDeploying('Deploy');
+      }, 3000);
+      setIsDeployed(true);
+      setProjectSlug(res.data.data.projectSlug);
+      setProjectURL(res.data.data.url);
       console.log("Deployment started", res.data);
       console.log("Subscribing to", res.data.data.projectSlug);
       socket.emit('subscribe', `logs:${res.data.data.projectSlug}`);
@@ -157,7 +167,7 @@ export default function DeployPage() {
         title: 'Error',
         description: 'Failed to deploy project',
       });
-      setIsDeploying(false);
+      setIsDeploying('Retry');
     }
   };
 
@@ -186,15 +196,35 @@ export default function DeployPage() {
               />
               <Button
                 onClick={handleDeploy}
-                disabled={isDeploying || !repoUrl}
+                disabled={isDeploying === 'Deploying...'}
                 className="absolute right-1 top-1 gap-2"
               >
-                {isDeploying ? 'Deploying...' : 'Deploy Now'}
+                {isDeploying}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+      {
+        isDeployed && (
+          <Card className="mb-8 border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle>Deployed Successfully</CardTitle>
+              <CardDescription>
+                Your project has been deployed successfully. Please wait for the deployment to complete. Before you can access your project, it needs to be deployed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-6">
+                  <p><b>Project Slug</b>: {projectSlug}</p>
+                  <p><b>Project URL</b>: <a href={projectURL} target="_blank" rel="noopener noreferrer">{projectURL}</a></p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm ">

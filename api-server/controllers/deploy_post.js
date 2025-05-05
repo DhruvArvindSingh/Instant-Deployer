@@ -1,14 +1,16 @@
 import client from '../database/index.js'
-import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs"
+import { ECSClient, RunTaskCommand, DescribeTasksCommand } from "@aws-sdk/client-ecs"
 import { generateSlug } from 'random-word-slugs'
 import dotenv from 'dotenv'
+import { DescribeNetworkInterfacesCommand, EC2Client } from "@aws-sdk/client-ec2"
 
 dotenv.config()
 
 const config = {
-    CLUSTER: 'arn:aws:ecs:ap-south-1:122610522956:cluster/builder-cluster-dev',
+    CLUSTER1: 'arn:aws:ecs:ap-south-1:122610522956:cluster/builder-cluster-dev',
+    CLUSTER2: 'arn:aws:ecs:ap-south-1:122610522956:cluster/dynamic-docker',
     TASK1: 'arn:aws:ecs:ap-south-1:122610522956:task-definition/builder-task',
-    TASK2: 'arn:aws:ecs:ap-south-1:122610522956:task-definition/builder-task-2'
+    TASK2: 'arn:aws:ecs:ap-south-1:122610522956:task-definition/dynamic-task'
 }
 
 const ecsClient = new ECSClient({
@@ -60,7 +62,7 @@ export default async function deploy_post(req, res) {
         try {
             //Run container
             const command = new RunTaskCommand({
-                cluster: config.CLUSTER,
+                cluster: config.CLUSTER1,
                 taskDefinition: config.TASK1,
                 launchType: 'FARGATE',
                 count: 1,
@@ -89,10 +91,6 @@ export default async function deploy_post(req, res) {
                                     value: String(deploymentId)
                                 },
                                 {
-                                    name: 'RUN_COMMANDS',
-                                    value: runCommands
-                                },
-                                {
                                     name: 'BUILD_COMMANDS',
                                     value: buildCommands
                                 }
@@ -101,10 +99,11 @@ export default async function deploy_post(req, res) {
                     ]
                 }
             });
-
             const response = await ecsClient.send(command);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
             return res.status(200).json({
-                status: 'queued',
+                status: 'running',
                 data: {
                     projectSlug: projectSlug,
                     url: projectURL
@@ -123,39 +122,36 @@ export default async function deploy_post(req, res) {
         }
     }
     else {
+        const ec2Client = new EC2Client({ region: "ap-south-1" });
         const allExposePorts = ['/app/main.sh', '--'];
         if (exposePorts) {
-            allExposePorts.push('--')
-            exposePorts?.forEach(port => {
-                allExposePorts.push('--expose', `${port}`)
-            })
-            console.log("allExposePorts = ", allExposePorts)
+            console.log("exposePorts = ", exposePorts)
         }
         console.log("Running container for dynamic site")
         //Run container
         const command = new RunTaskCommand({
-            cluster: config.CLUSTER,
+            cluster: config.CLUSTER2,
             taskDefinition: config.TASK2,
-            launchType: 'EC2',
+            launchType: 'FARGATE',
             count: 1,
             portMappings: [
-                {
-                    containerPort: 80,
-                    hostPort: 80,
+                allExposePorts.map(port => ({
+                    containerPort: port,
+                    hostPort: port,
                     protocol: 'tcp'
-                }
+                }))
             ],
             networkConfiguration: {
                 awsvpcConfiguration: {
                     subnets: ['subnet-0ea0c3f89d5c3e88f', 'subnet-0420b94324d3d86ab', 'subnet-009c9a49cce93f951'],
-                    securityGroups: ['sg-00eaec3f5b3b14bd9'],
+                    securityGroups: ['sg-020a67718eac8ed9c'],
                     assignPublicIp: 'ENABLED',
                 }
             },
             overrides: {
                 containerOverrides: [
                     {
-                        name: 'builder-image',
+                        name: 'dynamic-image',
                         environment: [
                             {
                                 name: 'GIT_REPOSITORY_URL',
@@ -168,10 +164,6 @@ export default async function deploy_post(req, res) {
                             {
                                 name: 'DEPLOYMENT_ID',
                                 value: String(deploymentId)
-                            },
-                            {
-                                name: 'EXPOSE_PORTS',
-                                value: exposePorts || ''
                             },
                             {
                                 name: 'RUN_COMMANDS',
@@ -187,6 +179,57 @@ export default async function deploy_post(req, res) {
                 ]
             }
         });
+        const response = await ecsClient.send(command);
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        console.log("response = ", response)
+        const taskArn = response.tasks[0].taskArn;
+        console.log("taskArn = ", taskArn)
+        const describeTask = await ecsClient.send(new DescribeTasksCommand({
+            cluster: config.CLUSTER2,
+            tasks: [taskArn]
+        }));
+        console.log("describeTask = ", describeTask)
+        const eniAttachment = describeTask.tasks[0].attachments[0].details.find(detail => detail.name === 'networkInterfaceId');
+        console.log("describeTask.tasks[0].attachments[0] = ", describeTask.tasks[0].attachments[0])
+        console.log("eniAttachment = ", eniAttachment)
+        const eniId = eniAttachment.value;
+        console.log("eniId = ", eniId)
+        let publicIp = null;
+        let eni = null;
+        const maxRetries = 10;
+        const delayMs = 2000;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const describeEni = await ec2Client.send(new DescribeNetworkInterfacesCommand({
+                NetworkInterfaceIds: [eniId]
+            }));
+            console.log(`describeEni attempt ${attempt} = `, describeEni);
+            eni = describeEni.NetworkInterfaces[0];
+            publicIp = eni.Association ? eni.Association.PublicIp : null;
+            if (publicIp) break;
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+        }
+        if (!publicIp) {
+            console.error("No public IP assigned to the ENI after retries:", eni);
+            return res.status(500).json({
+                status: 'failed',
+                error: 'No public IP assigned to the ENI after multiple retries. Please try again later.'
+            });
+        }
+        console.log("publicIp = ", publicIp)
+        const projectURL = `http://${publicIp}`;
+        console.log("projectURL = ", projectURL)
+        await client.query('UPDATE deployments SET status = $1 WHERE id = $2', ['RUNNING', deploymentId]);
+        await client.query('UPDATE projects SET custom_domain = $1 WHERE id = $2', [projectURL, projectId]);
+        return res.status(200).json({
+            status: 'running',
+            data: {
+                projectSlug: projectSlug,
+                url: projectURL
+            }
+        });
     }
-    const response = await ecsClient.send(command);
 }

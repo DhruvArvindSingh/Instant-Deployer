@@ -55,7 +55,7 @@ export default async function uploadToS3(s3Client, outDir) {
             if (index === files.length - 1) {
                 console.log("Uploaded all files to S3")
                 publishLog("Uploaded all files to S3")
-                process.exit(0);
+
             }
         } catch (error) {
             console.error(`❌ ❌ Error uploading file ${file} ❌ ❌:`, error);
