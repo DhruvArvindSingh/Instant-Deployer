@@ -3,3 +3,5 @@ frontend/.next
 dynamic-docker/output
 .env
 .env.local
+.next
+.env.local

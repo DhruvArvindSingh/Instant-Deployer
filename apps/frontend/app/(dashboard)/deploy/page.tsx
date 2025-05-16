@@ -10,7 +10,6 @@ import axios from 'axios';
 import { CodeBlock } from "@/components/ui/code-block";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { io } from "socket.io-client";
 
@@ -20,7 +19,7 @@ const socket = io(`${process.env.NEXT_PUBLIC_SOCKET_SERVER_URL}`);
 import { Textarea } from '@/components/ui/textarea';
 export default function DeployPage() {
   const [repoUrl, setRepoUrl] = useState('');
-  const [isDeploying, setIsDeploying] = useState('Deloy');
+  const [isDeploying, setIsDeploying] = useState('Deploy');
   const [isDeployed, setIsDeployed] = useState(false);
   const [projectSlug, setProjectSlug] = useState('');
   const [projectURL, setProjectURL] = useState('');
@@ -31,7 +30,6 @@ export default function DeployPage() {
   const [customSubdomain, setCustomSubdomain] = useState('');
   const [buildScript, setBuildScript] = useState('npm install\nnpm run build');
   const [runScript, setRunScript] = useState('npm run start');
-  const [open, setOpen] = useState(false)
   const [logStatus, setLogStatus] = useState(false);
   const [alllogs, setAllLogs] = useState('');
   const isDesktop = useMediaQuery("(min-width: 768px)")
