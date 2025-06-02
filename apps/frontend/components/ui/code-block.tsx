@@ -1,7 +1,5 @@
 "use client";
 import React from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 
 type CodeBlockProps = {
@@ -9,11 +7,11 @@ type CodeBlockProps = {
   filename: string;
   highlightLines?: number[];
 } & (
-  | {
+    | {
       code: string;
       tabs?: never;
     }
-  | {
+    | {
       code?: never;
       tabs: Array<{
         name: string;
@@ -22,7 +20,7 @@ type CodeBlockProps = {
         highlightLines?: number[];
       }>;
     }
-);
+  );
 
 export const CodeBlock = ({
   language,
@@ -53,20 +51,22 @@ export const CodeBlock = ({
     ? tabs[activeTab].highlightLines || []
     : highlightLines;
 
+  // Split code into lines for rendering with line numbers
+  const codeLines = activeCode ? activeCode.split('\n') : [];
+
   return (
     <div className="relative w-full rounded-lg bg-slate-900 p-4 font-mono text-sm">
       <div className="flex flex-col gap-2">
         {tabsExist && (
-          <div className="flex  overflow-x-auto">
+          <div className="flex overflow-x-auto">
             {tabs.map((tab, index) => (
               <button
                 key={index}
                 onClick={() => setActiveTab(index)}
-                className={`px-3 !py-2 text-xs transition-colors font-sans ${
-                  activeTab === index
+                className={`px-3 !py-2 text-xs transition-colors font-sans ${activeTab === index
                     ? "text-white"
                     : "text-zinc-400 hover:text-zinc-200"
-                }`}
+                  }`}
               >
                 {tab.name}
               </button>
@@ -85,30 +85,26 @@ export const CodeBlock = ({
           </div>
         )}
       </div>
-      <SyntaxHighlighter
-        language={activeLanguage}
-        style={atomDark}
-        customStyle={{
-          margin: 0,
-          padding: 0,
-          background: "transparent",
-          fontSize: "0.875rem", // text-sm equivalent
-        }}
-        wrapLines={true}
-        showLineNumbers={true}
-        lineProps={(lineNumber) => ({
-          style: {
-            backgroundColor: activeHighlightLines.includes(lineNumber)
-              ? "rgba(255,255,255,0.1)"
-              : "transparent",
-            display: "block",
-            width: "100%",
-          },
-        })}
-        PreTag="div"
-      >
-        {String(activeCode)}
-      </SyntaxHighlighter>
+      <div className="relative overflow-auto">
+        <pre className="text-sm p-0 m-0 bg-transparent">
+          <code className={`language-${activeLanguage}`}>
+            {codeLines.map((line, i) => (
+              <div
+                key={i}
+                className="flex"
+                style={{
+                  backgroundColor: activeHighlightLines.includes(i + 1)
+                    ? "rgba(255,255,255,0.1)"
+                    : "transparent",
+                }}
+              >
+                <span className="text-gray-500 w-8 inline-block text-right pr-2">{i + 1}</span>
+                <span className="flex-1">{line || " "}</span>
+              </div>
+            ))}
+          </code>
+        </pre>
+      </div>
     </div>
   );
 };

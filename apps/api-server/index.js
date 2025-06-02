@@ -3,7 +3,7 @@ import { generateSlug } from 'random-word-slugs'
 import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs"
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import { signup_post, signin_post, verify, project_post, deploy_post, dashboard_get } from './controllers/index.js'
+import { signup_post, signin_post, verify, project_post, deploy_post, dashboard_get, projects_get } from './controllers/index.js'
 import hash_pass from './middleware/hash_pass.js'
 import auth from './middleware/auth.js'
 import user_id from './middleware/user_id.js'
@@ -29,6 +29,7 @@ app.post("/signin", hash_pass, signin_post);
 app.get("/dashboard", auth, user_id, dashboard_get)
 app.post("/verify", verify)
 app.post("/project", auth, user_id, project_post)
+app.get("/projects", auth, user_id, projects_get)
 app.post("/deploy", auth, user_id, deploy_post)
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)

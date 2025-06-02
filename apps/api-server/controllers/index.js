@@ -4,6 +4,7 @@ import project_post from './project_post.js'
 import verify from './verify.js'
 import deploy_post from './deploy_post.js'
 import dashboard_get from './dashboard_get.js'
+import projects_get from './projects_get.js'
 
 export {
     verify,
@@ -11,5 +12,6 @@ export {
     signin_post,
     project_post,
     deploy_post,
-    dashboard_get
+    dashboard_get,
+    projects_get
 };

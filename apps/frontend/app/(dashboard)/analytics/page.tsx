@@ -4,29 +4,91 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import dotenv from 'dotenv';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 dotenv.config({ path: '../../../../../.env' });
 
 export default function AnalyticsPage() {
-  // Mock data for charts
-  const visitData = [
-    { date: 'Mon', value: 1200 },
-    { date: 'Tue', value: 1900 },
-    { date: 'Wed', value: 2400 },
-    { date: 'Thu', value: 1800 },
-    { date: 'Fri', value: 2800 },
-    { date: 'Sat', value: 2200 },
-    { date: 'Sun', value: 2000 },
-  ];
+  const [visitData, setVisitData] = useState<any[]>([]);
+  const [deploymentData, setDeploymentData] = useState<any[]>([]);
 
-  const deploymentData = [
-    { date: 'Jan', successful: 45, failed: 4 },
-    { date: 'Feb', successful: 52, failed: 6 },
-    { date: 'Mar', successful: 48, failed: 2 },
-    { date: 'Apr', successful: 61, failed: 7 },
-    { date: 'May', successful: 55, failed: 5 },
-    { date: 'Jun', successful: 67, failed: 3 },
-  ];
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await axios.get('http://localhost:9000/projects', {
+          withCredentials: true,
+        });
+        if (res.status === 200) {
+          console.log("res.data = ", res.data);
+          // Map the projects to the expected format
+          res.data.map((project: any) => {
+            let date = new Date(project.updated_at);
+            const u_year = date.getUTCFullYear();
+            const u_day = String(date.getUTCDate()).padStart(2, '0');
+            const u_month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            date = new Date(project.created_at);
+            const l_year = date.getFullYear();
+            const l_day = String(date.getDate()).padStart(2, '0');
+            const l_month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            let url = project.github_url.replace("https://github.com/", "");
+
+            let redirect_url;
+            if (project.custom_domain) {
+              redirect_url = project.custom_domain;
+            } else {
+              redirect_url = `http://${project.subdomain}.localhost:8000/`;
+            }
+            setVisitData((prev) => [...prev, {
+              value: Math.floor(Math.random() * 10),
+              date: `${l_year}-${l_month}-${l_day}`,
+            }]);
+            if (deploymentData.find((d) => d.date === `${u_year}-${u_month}-${u_day}`) === undefined) {
+              setDeploymentData((prev) => [...prev, {
+                date: `${u_year}-${u_month}-${u_day}`,
+                successful: 1,
+              }]);
+            } else {
+              let dep_data = visitData.find((d) => d.date === `${u_year}-${u_month}-${u_day}`);
+              setDeploymentData((prev) => prev.map((d) => d.date === `${u_year}-${u_month}-${u_day}` ? { ...d, successful: d.successful + 1 } : d));
+            }
+          });
+
+        } else {
+          console.log("Error fetching projects", res.data);
+          toast.error("Error fetching projects", {
+            description: res.data.error,
+          });
+        }
+      } catch (error: any) {
+        console.log("Error fetching projects", error);
+        toast.error("Error fetching projects", {
+          description: error?.response?.data?.error || error.message,
+        });
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  // const visitData = [
+  //   { date: 'Mon', value: 1200 },
+  //   { date: 'Tue', value: 1900 },
+  //   { date: 'Wed', value: 2400 },
+  //   { date: 'Thu', value: 1800 },
+  //   { date: 'Fri', value: 2800 },
+  //   { date: 'Sat', value: 2200 },
+  //   { date: 'Sun', value: 2000 },
+  // ];
+
+  // const deploymentData = [
+  //   { date: 'Jan', successful: 45, failed: 4 },
+  //   { date: 'Feb', successful: 52, failed: 6 },
+  //   { date: 'Mar', successful: 48, failed: 2 },
+  //   { date: 'Apr', successful: 61, failed: 7 },
+  //   { date: 'May', successful: 55, failed: 5 },
+  //   { date: 'Jun', successful: 67, failed: 3 },
+  // ];
 
   return (
     <>
@@ -50,7 +112,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-end justify-between">
-                    <p className="text-3xl font-bold">24.5K</p>
+                    <p className="text-3xl font-bold">{Math.floor(Math.random() * 10)}</p>
                     <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
                       +12% from last week
                     </span>
@@ -64,7 +126,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-end justify-between">
-                    <p className="text-3xl font-bold">58</p>
+                    <p className="text-3xl font-bold"></p>
                     <span className="text-xs px-2 py-1 rounded-full bg-chart-2/10 text-chart-2">
                       +8% from last month
                     </span>
