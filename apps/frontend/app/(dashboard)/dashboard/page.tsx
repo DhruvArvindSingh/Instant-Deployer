@@ -8,6 +8,7 @@ import { ProjectCard } from '@/components/project-card';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import dotenv from 'dotenv';
+import { toast } from 'sonner';
 
 dotenv.config({ path: '../../../../../.env' });
 
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const [totalDeployments, setTotalDeployments] = useState(0);
   const [activeProjects, setActiveProjects] = useState(0);
   const [totalVisits, setTotalVisits] = useState(0);
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -47,6 +49,7 @@ export default function DashboardPage() {
           console.log("res.data from dashboard_get", res.data);
           setTotalDeployments(res.data.totalDeployments.length);
           setActiveProjects(res.data.projects.length);
+          fetchProjects();
           // setTotalDeployments(res.data.length);
         }
       } catch (error) {
@@ -64,6 +67,47 @@ export default function DashboardPage() {
       isMounted = false;
     };
   }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const res = await axios.get('http://localhost:9000/projects', {
+        withCredentials: true,
+      });
+      if (res.status === 200) {
+        console.log("res.data = ", res.data);
+        // Map the projects to the expected format
+        const formattedProjects = res.data.map((project: any) => {
+          let url = project.github_url.replace("https://github.com/", "");
+          let redirect_url;
+          if (project.custom_domain) {
+            redirect_url = project.custom_domain;
+          } else {
+            redirect_url = `http://${project.subdomain}.localhost:8000/`;
+          }
+          return {
+            id: project.id,
+            name: url.split("/")[1],
+            status: "Running",
+            url: redirect_url,
+            lastDeployed: project.updated_at,
+          };
+        });
+        setProjects(formattedProjects);
+      } else {
+        console.log("Error fetching projects", res.data);
+        toast.error("Error fetching projects", {
+          description: res.data.error,
+        });
+      }
+    } catch (error: any) {
+      console.log("Error fetching projects", error);
+      toast.error("Error fetching projects", {
+        description: error?.response?.data?.error || error.message,
+      });
+    }
+  };
+
+
 
   // Mock data for demonstration
   const recentProjects: any[] = [
@@ -162,7 +206,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="cursor-pointer grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentProjects.map((project) => (
+              {projects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
             </div>

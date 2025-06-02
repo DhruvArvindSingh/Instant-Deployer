@@ -29,22 +29,16 @@ export default function DashboardLayout({
       active: pathname === '/dashboard',
     },
     {
-      href: '/dashboard/projects',
+      href: '/projects',
       label: 'Projects',
       icon: Code,
       active: pathname === '/dashboard/projects',
     },
     {
-      href: '/dashboard/analytics',
+      href: '/analytics',
       label: 'Analytics',
       icon: BarChart3,
       active: pathname === '/dashboard/analytics',
-    },
-    {
-      href: '/dashboard/settings',
-      label: 'Settings',
-      icon: Settings,
-      active: pathname === '/dashboard/settings',
     },
   ];
 
@@ -109,11 +103,10 @@ export default function DashboardLayout({
               <Link
                 key={route.href}
                 href={route.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                  route.active
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-foreground/70 hover:text-foreground hover:bg-accent'
-                }`}
+                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${route.active
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-accent'
+                  }`}
               >
                 <route.icon className="h-5 w-5" />
                 <span>{route.label}</span>

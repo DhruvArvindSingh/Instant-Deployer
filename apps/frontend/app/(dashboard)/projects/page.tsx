@@ -1,61 +1,56 @@
+'use client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { ProjectCard } from '@/components/project-card';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function ProjectsPage() {
-  // Mock data for demonstration
-  const projects = [
-    {
-      id: '1',
-      name: 'Landing Page',
-      status: 'deployed',
-      url: 'https://landing-page.vercel.app',
-      lastDeployed: '2 hours ago',
-      framework: 'Next.js',
-    },
-    {
-      id: '2',
-      name: 'E-commerce App',
-      status: 'building',
-      url: 'https://ecommerce-app.vercel.app',
-      lastDeployed: '5 days ago',
-      framework: 'React',
-    },
-    {
-      id: '3',
-      name: 'Portfolio',
-      status: 'deployed',
-      url: 'https://portfolio.vercel.app',
-      lastDeployed: '1 month ago',
-      framework: 'Astro',
-    },
-    {
-      id: '4',
-      name: 'Blog',
-      status: 'deployed',
-      url: 'https://blog.vercel.app',
-      lastDeployed: '3 weeks ago',
-      framework: 'Gatsby',
-    },
-    {
-      id: '5',
-      name: 'Admin Dashboard',
-      status: 'failed',
-      url: 'https://admin.vercel.app',
-      lastDeployed: '2 days ago',
-      framework: 'Vue',
-    },
-    {
-      id: '6',
-      name: 'API Documentation',
-      status: 'deployed',
-      url: 'https://docs.vercel.app',
-      lastDeployed: '1 week ago',
-      framework: 'Docusaurus',
-    },
-  ];
+  const [projects, setProjects] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await axios.get('http://localhost:9000/projects', {
+          withCredentials: true,
+        });
+        if (res.status === 200) {
+          console.log("res.data = ", res.data);
+          // Map the projects to the expected format
+          const formattedProjects = res.data.map((project: any) => {
+            let url = project.github_url.replace("https://github.com/", "");
+            let redirect_url;
+            if (project.custom_domain) {
+              redirect_url = project.custom_domain;
+            } else {
+              redirect_url = `http://${project.subdomain}.localhost:8000/`;
+            }
+            return {
+              id: project.id,
+              name: url.split("/")[1],
+              status: "Running",
+              url: redirect_url,
+              lastDeployed: project.updated_at,
+            };
+          });
+          setProjects(formattedProjects);
+        } else {
+          console.log("Error fetching projects", res.data);
+          toast.error("Error fetching projects", {
+            description: res.data.error,
+          });
+        }
+      } catch (error: any) {
+        console.log("Error fetching projects", error);
+        toast.error("Error fetching projects", {
+          description: error?.response?.data?.error || error.message,
+        });
+      }
+    };
+    fetchProjects();
+  }, []);
 
   return (
     <>
@@ -78,7 +73,7 @@ export default function ProjectsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
+            {projects.map((project: any) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>

@@ -34,7 +34,7 @@ export default function HomePage() {
           return; // Stay on the homepage if no token
         }
 
-        const res = await axios.post(`${process.env.API_SERVER_URL}/verify`, {}, {
+        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_SERVER_URL}/verify`, {}, {
           headers: {
             'token': token
           },
