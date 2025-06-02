@@ -2,10 +2,12 @@ import express from 'express'
 import client from './database/index.js'
 import httpProxy from 'http-proxy'
 import dotenv from 'dotenv'
+import cors from 'cors'
 
 dotenv.config({ path: '../../.env' });
 
 const app = express()
+app.use(cors())
 const PORT = 8000
 
 const BASE_PATH = `${process.env.S3_BUCKET_FOLDER_LINK}`

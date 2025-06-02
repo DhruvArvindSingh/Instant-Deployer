@@ -13,10 +13,8 @@ const app = express()
 
 // Configure CORS to allow credentials
 app.use(cors({
-    origin: 'http://localhost:3000', // Replace with your frontend URL
+    origin: 'http://localhost:3000',
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'token']
 }))
 
 app.use(express.json())
